@@ -22,7 +22,7 @@
              :one 1
              :two 2
              :three 3
-             :collect (multi/bind [:one :two :three])
+             :collect (multi/bind :one :two :three)
              :app (component/using (dependent)
                                    {:handlers :collect}))]
 
@@ -39,20 +39,10 @@
              :a (dependency)
              :b (dependency)
              :c (dependency)
-             :all (multi/bind [:a :b :c])
+             :all (multi/bind :a :b :c)
              :app (component/using (dependent) {:handlers :all}))]
     
     (is (not (:started (:app sys))))
     (let [handlers (get-in (component/start sys) [:app :handlers])
           deps (handlers)]
       (is (every? :started deps)))))
-
-(deftest simple-multibind
-  (let [sys (component/system-map
-             :one (One. 1)
-             :two (Two. 2)
-             :three (Three. 3)
-             :handlers (multi/bind :handler [:one :two :three])
-             :dep (component/using (dependent) [:handlers]))]
-    (is (= (get-in sys [:dep :handlers]) nil))
-    (is (= ((get-in (component/start sys) [:dep :handlers]))) [1 2 3]) ))
