@@ -1,6 +1,5 @@
 (ns octobind.multi
-  (:require [com.stuartsierra.component :as component]
-            [clojure.tools.logging :refer (info)])
+  (:require [com.stuartsierra.component :as component])
   (:import [clojure.lang MapEntry]))
 
 ;; Multibind collects together the dependencies specified in deps
