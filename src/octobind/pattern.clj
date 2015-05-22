@@ -8,6 +8,28 @@
   [val]
   (= (:bind (meta val)) :pattern))
 
+(defn map-vals [f m]
+  (into {} (for [[k v] m] [k (f v)])))
+
+(defn tag-pattern-dependencies-of-value
+  "Tag any collections in the dependencies metadata as pattern
+  dependencies."
+  [value]
+  (->> (component/dependencies value)
+       (map-vals (fn [v] (if (coll? v)
+                          (with-meta
+                            [(keyword (gensym)) v]
+                            {:bind :pattern})
+                          v)))
+       (component/using value)))
+
+(defn tag-collections-as-pattern-dependencies
+  "Tag any collection in the dependencies within a system map as
+  pattern dependencies."
+  [system-map]
+  (->> system-map
+       (map-vals tag-pattern-dependencies-of-value)))
+
 (defn find-pattern-dependencies
   "Retrieve all pattern bindings from an unaugmented system map."
   [system-map]
@@ -48,18 +70,13 @@
   "Process a system map to supplement it with entries for all the
   patterns and replace the pattern-dependencies with the keys."
   [system-map]
-  (let [pattern-deps (find-pattern-dependencies system-map)
+  (let [tagged-map (tag-collections-as-pattern-dependencies system-map)
+        pattern-deps (find-pattern-dependencies tagged-map)
         augmented (reduce (fn [m [kw pattern]]
                             (assoc m kw (make-intermediate pattern)))
-                          system-map
+                          tagged-map
                           pattern-deps)]
     (->> (seq augmented)
          (map (fn [[k v]] [k (replace-intermediate-meta v)]))
          (apply concat)
          (apply component/system-map))))
-
-(defmacro bind
-  "Create a value which can act as a key in the augmented system map
-  but also encode the operation required to resolve the dependency."
-  [pattern]
-  (with-meta [(keyword (gensym)) pattern] {:bind :pattern}))
