@@ -3,7 +3,7 @@
   (:import [clojure.lang MapEntry]))
 
 ;; Multibind collects together the dependencies specified in deps
-(deftype Multibind [deps binds metadata]
+(deftype Multibind [dep-index-map binds metadata]
   
   component/Lifecycle
   (start [self] self)
@@ -17,29 +17,30 @@
   ;; Metadata is required for component dependencies
   clojure.lang.IObj
   (meta [self] metadata)
-  (withMeta [self m] (Multibind. deps binds m))
+  (withMeta [self m] (Multibind. dep-index-map binds m))
     
   ;; Component requires that we resemble a map for associng
   ;; dependencies 
   clojure.lang.Associative
   (containsKey [self k]
-    (or (contains? #{:deps :binds} k)
+    (or (contains? #{:dep-index-map :binds} k)
         (and (number? k)
-             (< k (count deps)))))
+             (< k (count dep-index-map)))))
 
   (entryAt [self k]
     (let [entry (fn [k v] (MapEntry. k v))]
       (case k
-        :deps (entry k deps)
+        :dep-index-map (entry k dep-index-map)
         :binds (entry k binds)
         (entry k (get binds k)))))
   
   (assoc [self k v]
-    (if-let [index (deps k)]
-      (Multibind. deps (assoc binds index v) metadata)
+    (println "setting" k "to" v)
+    (if-let [index (dep-index-map k)]
+      (Multibind. dep-index-map (assoc binds index v) metadata)
       (case k
-        :deps (Multibind. v binds metadata)
-        :binds (Multibind. deps v metadata)
+        :dep-index-map (Multibind. v binds metadata)
+        :binds (Multibind. dep-index-map v metadata)
         self)))
 
   (valAt [self k] (.entryAt self k))
@@ -47,11 +48,11 @@
   (valAt [self k default] (or (.entryAt self k) default)))
 
 (defn bind
-  "Creates a multibinding which will gather the dependencies named by
-  keyword in `deps`. If `f` is supplied it is used to extract from or
-  transform the dependencies when component/start is called."
+  "Creates a multibinding which will, on component/start, gather the
+  dependencies named by keyword in `deps`."
   [& deps]
-  (let [deps-map (into {} (map-indexed (fn [a b] [b a]) deps))]
+  (let [deps-map (into {} (map-indexed (fn [n d] [d n]) deps))]
     (component/using
      (Multibind. deps-map (into [] (repeat (count deps) nil)) {})
      (vec deps))))
+
