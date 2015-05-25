@@ -10,7 +10,8 @@
 (defrecord Dependent [deps])
 (defn dependent [] (->Dependent nil))
 
-(deftest pattern-dependencies
+(deftest pattern-dependencies-sample
+  
   (let [sys (component/system-map
              :a (dependency)
              :b (dependency)
@@ -21,7 +22,7 @@
                  (dependent)
                  {:deps {:x :a :y :b}}))]
 
-    (let [augmented (pattern/patternise sys)]
+    (let [augmented (pattern/with-collection-binds sys)]
 
       ;; the augmented system map will have extra intermediate
       ;; dependencies
